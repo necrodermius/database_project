@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Розклад занять</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f9f9f9;
+    }
+
+    /* Вузько scoped під сторінку розкладу */
+    .schedule-page h1 {
+      font-size: 1.5rem;      /* трохи менше за звичайний h1 */
+      text-align: center;
+      color: #333;
+      margin-bottom: 0.5em;
+    }
+    .schedule-page h2 {
+      font-size: 1rem;        /* як звичайний текст */
+      text-align: center;
+      color: #555;
+      margin-top: 0;
+      margin-bottom: 1em;
+    }
+
+    .schedule-page table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-top: 0;
+    }
+    .schedule-page th,
+    .schedule-page td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+      vertical-align: top;
+    }
+    .schedule-page th {
+      background-color: #4CAF50;
+      color: #fff;
+      font-size: 0.9em;
+      text-transform: uppercase;
+    }
+    .schedule-page tr:nth-child(even) td {
+      background-color: #f2f2f2;
+    }
+
+    /* центруємо пагінацію flex’ом */
+    .schedule-page .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin: 15px 0;
+    }
+    .schedule-page .pagination a {
+      text-decoration: none;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+    .schedule-page .pagination span {
+      color: #333;
+    }
+
+    /* динамічні класи для курсів */
+    {% for cid, color in course_colors.items %}
+    .course-{{ cid }} {
+      background-color: {{ color }} !important;
+    }
+    {% endfor %}
+  </style>
+</head>
+<body>
+
+{# тут підключаємо navbar.html #}
+  {% include 'database/navbar.html' %}
+
+<div class="schedule-page">
+  <h1>Розклад занять</h1>
+  {% if start_week and end_week %}
+    <h2>Тиждень: {{ start_week|date:"d.m.Y" }} – {{ end_week|date:"d.m.Y" }}</h2>
+  {% endif %}
+
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2">День</th>
+        <th rowspan="2">Час</th>
+        {% for grp in groups %}
+          <th colspan="{{ grp.subgroups|length }}">{{ grp.group.name }}</th>
+        {% endfor %}
+      </tr>
+      <tr>
+        {% for grp in groups %}
+          {% for sg in grp.subgroups %}
+            <th>підгрупа {{ sg.number }}</th>
+          {% endfor %}
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          {% if row.is_first %}
+            <td rowspan="{{ row.rowspan }}">{{ row.day|date:"l"|capfirst }}</td>
+          {% endif %}
+          <td>{{ row.time|time:"H:i" }}</td>
+          {% for cell in row.cells %}
+            {% if cell %}
+              <td class="course-{{ cell.course.id }}">
+                <strong>{{ cell.course.course_name }}</strong><br>
+                {{ cell.lesson_type }}<br>
+                {{ cell.course.teacher.full_name }}
+              </td>
+            {% else %}
+              <td></td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}">← Попередній тиждень</a>
+    {% endif %}
+    <span>Сторінка {{ page_obj.number }} з {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}">Наступний тиждень →</a>
+    {% endif %}
+  </div>
+</div>
+<script src="…bootstrap.bundle.min.js"></script>
+</body>
+</html>
