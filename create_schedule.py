@@ -29,8 +29,16 @@ class ScheduleGenerator:
     ]
 
     WORK_DAYS = [0, 1, 2, 3, 4]  # Пн-Пт
+    LECTURE_DAYS = []
+    PRACTICE_DAYS = []
+
+    MAX_LESSONS_FOR_SUBGROUP = 4
+    MAX_LESSONS_FOR_TEACHER = 7 # поки не актуально
 
     def __init__(self, study_plan, semester, start_date, end_date):
+        self.LECTURE_DAYS = random.sample(self.WORK_DAYS, 2)
+        self.PRACTICE_DAYS = [day for day in self.WORK_DAYS if day not in self.LECTURE_DAYS]
+
         self.study_plan = study_plan
         self.semester = semester
         self.start_date = start_date
@@ -91,7 +99,7 @@ class ScheduleGenerator:
         lectures_created = defaultdict(int)
 
         while current_date <= self.end_date:
-            if current_date.weekday() not in self.WORK_DAYS:
+            if current_date.weekday() not in self.LECTURE_DAYS:
                 current_date += timedelta(days=1)
                 continue
 
@@ -104,12 +112,12 @@ class ScheduleGenerator:
                     if not self._is_teacher_available(course.teacher, current_date, start_time, end_time):
                         continue
 
-                    daily_teacher_lessons = Lesson.objects.filter(
-                        course__teacher=course.teacher, date=current_date
-                    ).count()
-
-                    if daily_teacher_lessons >= 4:  # обмеження 4 заняття на день
-                        continue
+                    # daily_teacher_lessons = Lesson.objects.filter(
+                    #     course__teacher=course.teacher, date=current_date
+                    # ).count()
+                    #
+                    # if daily_teacher_lessons >= 4:  # обмеження 4 заняття на день
+                    #     continue
 
                     subgroups_to_create = []
                     for subgroup in self.subgroups:
@@ -117,7 +125,7 @@ class ScheduleGenerator:
                             subgroup=subgroup, date=current_date
                         ).count()
 
-                        if daily_subgroup_lessons < 4:
+                        if daily_subgroup_lessons < self.MAX_LESSONS_FOR_SUBGROUP:
                             subgroups_to_create.append(subgroup)
 
                     if not subgroups_to_create:
@@ -155,7 +163,7 @@ class ScheduleGenerator:
         practices_created = defaultdict(int)
 
         while current_date <= self.end_date:
-            if current_date.weekday() not in self.WORK_DAYS:
+            if current_date.weekday() not in self.PRACTICE_DAYS:
                 current_date += timedelta(days=1)
                 continue
             logger.info(f"Оброблюється {current_date} день")
@@ -187,7 +195,7 @@ class ScheduleGenerator:
                             subgroup=subgroup, date=current_date
                         ).count()
 
-                        if daily_subgroup_lessons >=4:
+                        if daily_subgroup_lessons >= self.MAX_LESSONS_FOR_SUBGROUP:
                             continue
 
                         Lesson.objects.create(
@@ -211,8 +219,8 @@ class ScheduleGenerator:
             start_time=start_time
         ).exists()
 
-        teacher_courses = Course.objects.filter(teacher=teacher, semester=self.semester)
-        total_hours = sum(c.lecture_hours + c.practice_hours for c in teacher_courses)
+        # teacher_courses = Course.objects.filter(teacher=teacher, semester=self.semester)
+        # total_hours = sum(c.lecture_hours + c.practice_hours for c in teacher_courses)
 
         # logger.debug(
         #     f"Teacher {teacher} availability check: "
@@ -250,14 +258,16 @@ class ScheduleGenerator:
         return schedule
 # Приклад використання
 
-study_plans = StudyPlan.objects.all()
-Lesson.objects.all().delete()
-for sp in study_plans:
-    #for i in range(32, 38):
-    study_plan = StudyPlan.objects.get(pk=sp.id)  # Отримуємо навчальний план
-    semester = 2
-    start_date = date(2025, 1, 20)  # Початок семестру
-    end_date = date(2025, 5, 31)  # Кінець семестру
+
+if __name__ == "__main__":
+    study_plans = StudyPlan.objects.all()
+    Lesson.objects.all().delete()
+    for sp in study_plans:
+        #for i in range(32, 38):
+        study_plan = StudyPlan.objects.get(pk=sp.id)  # Отримуємо навчальний план
+        semester = 2
+        start_date = date(2025, 1, 20)  # Початок семестру
+        end_date = date(2025, 5, 31)  # Кінець семестру
 
     generator = ScheduleGenerator(study_plan, semester, start_date, end_date)
     schedule = generator.generate_schedule()

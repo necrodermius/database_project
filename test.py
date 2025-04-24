@@ -24,7 +24,7 @@ COUNT_OF_COURSES_BY_SEMESTER = 6
 COUNT_OF_TEACHER_COURSES = 2
 STUDY_PLAN_DURATION = 2 # семестрів
 LECTURE_HOURS = 20*2
-PRACTICE_HOURS = 20*2
+PRACTICE_HOURS = 17*2
 
 @transaction.atomic
 def generate_test_data():
