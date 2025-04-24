@@ -17,6 +17,14 @@ fake = Faker("uk_UA")  # Якщо хочете українські дані. М
 POSITIONS = ["Assistant", "Associate Professor", "Professor", "Senior Lecturer"]
 LESSON_TYPES = ["Lecture", "Practice", "Lab", "Seminar"]
 
+COUNT_OF_STUDY_PLANS = 1
+COUNT_OF_GROUPS_BY_YEAR = 5
+COUNT_OF_SUBGROUPS_BY_GROUP = 2
+COUNT_OF_COURSES_BY_SEMESTER = 6
+COUNT_OF_TEACHER_COURSES = 2
+STUDY_PLAN_DURATION = 2 # семестрів
+LECTURE_HOURS = 20*2
+PRACTICE_HOURS = 20*2
 
 @transaction.atomic
 def generate_test_data():
@@ -43,11 +51,11 @@ def generate_test_data():
 
     # 1. Створимо кілька навчальних планів (StudyPlan)
     study_plans = []
-    for year in range(2020, 2026):  # 2020...2025
+    for year in range(2021, 2021 + COUNT_OF_STUDY_PLANS):  # 2020...2025
         sp = StudyPlan.objects.create(
             name=f"Навчальний план {year}",
             year_of_effect=year,
-            number_of_semesters=2,  # можна змінити, якщо потрібно
+            number_of_semesters=STUDY_PLAN_DURATION,  # можна змінити, якщо потрібно
             approval_date=fake.date_between_dates(
                 date_start=date(year, 1, 1),
                 date_end=date(year, 12, 31)
@@ -58,11 +66,11 @@ def generate_test_data():
 
     # 2. Створимо викладачів (Teacher)
     teachers = []
-    for _ in range(20):  # 20 викладачів ///////////////////////
+    for _ in range(int(COUNT_OF_COURSES_BY_SEMESTER / COUNT_OF_STUDY_PLANS * COUNT_OF_STUDY_PLANS / STUDY_PLAN_DURATION)):  # 20 викладачів ///////////////////////
         t = Teacher.objects.create(
             full_name=fake.name(),
             position=random.choice(POSITIONS),
-            allowed_hours=random.randint(300, 600),
+            allowed_hours=1000, #random.randint(300, 600),
             rate=round(random.uniform(0.5, 1.0), 2)
         )
         teachers.append(t)
@@ -76,7 +84,7 @@ def generate_test_data():
         # Обчислюємо поточний курс на основі року початку навчання
         course_year = current_year - sp.year_of_effect + 1
         # Створимо, наприклад, 4 групи для кожного плану
-        for i in range(1, 5):    # ////////////////////////////
+        for i in range(1, COUNT_OF_GROUPS_BY_YEAR + 1):    # ////////////////////////////
             g = Group.objects.create(
                 name=f"{sp.year_of_effect}-Група-{i}",
                 major=fake.job(),  # або можна вказати конкретну спеціальність
@@ -90,7 +98,7 @@ def generate_test_data():
     subgroups = []
     for g in groups:
         # Наприклад, дві підгрупи у кожній групі
-        for sub_number in [1, 2]:                   # ///////////////////////////////
+        for sub_number in range(1, COUNT_OF_SUBGROUPS_BY_GROUP + 1):                   # ///////////////////////////////
             sg = Subgroup.objects.create(
                 group=g,
                 number=sub_number
@@ -105,46 +113,46 @@ def generate_test_data():
         "Англійська мова", "Економіка", "Педагогіка", "Філософія"
     ]
     courses = []
-    for _ in range(50):  # 50 випадкових курсів ///////////////////////////
+    for i in range(COUNT_OF_COURSES_BY_SEMESTER):  # 50 випадкових курсів ///////////////////////////
         sp = random.choice(study_plans)
-        t = random.choice(teachers)
+        t = teachers[i // COUNT_OF_TEACHER_COURSES]
         c_name = random.choice(course_names)
         c = Course.objects.create(
             study_plan=sp,
             course_name=c_name,
-            lecture_hours=random.randint(20, 60),
-            practice_hours=random.randint(20, 60),
-            semester=random.randint(1, sp.number_of_semesters),
+            lecture_hours=LECTURE_HOURS,
+            practice_hours=PRACTICE_HOURS,
+            semester=2,
             credits=random.randint(3, 6),
             teacher=t
         )
         courses.append(c)
 
-    # 6. Створимо заняття (Lesson) для кожного курсу
-    # Генеруємо дати від сьогодні до 90 днів у майбутньому, щоб не було занять у минулому.
-    today = date.today()
-    future_date_end = today + timedelta(days=90)
-
-    for c in courses:
-        # Знаходимо всі підгрупи, що належать групам з даного навчального плану курсу
-        relevant_groups = Group.objects.filter(study_plan=c.study_plan)
-        relevant_subgroups = Subgroup.objects.filter(group__in=relevant_groups)
-
-        # Для кожної підгрупи генеруємо від 20 до 50 занять для цього курсу
-        for sg in relevant_subgroups:
-            for _ in range(random.randint(20, 50)):
-                random_date = fake.date_between_dates(date_start=today, date_end=future_date_end)
-                random_time = time(
-                    hour=random.randint(8, 18),
-                    minute=random.choice([0, 15, 30, 45])
-                )
-                Lesson.objects.create(
-                    course=c,
-                    subgroup=sg,
-                    date=random_date,
-                    start_time=random_time,
-                    lesson_type=random.choice(LESSON_TYPES)
-                )
+    # # 6. Створимо заняття (Lesson) для кожного курсу
+    # # Генеруємо дати від сьогодні до 90 днів у майбутньому, щоб не було занять у минулому.
+    # today = date.today()
+    # future_date_end = today + timedelta(days=90)
+    #
+    # for c in courses:
+    #     # Знаходимо всі підгрупи, що належать групам з даного навчального плану курсу
+    #     relevant_groups = Group.objects.filter(study_plan=c.study_plan)
+    #     relevant_subgroups = Subgroup.objects.filter(group__in=relevant_groups)
+    #
+    #     # Для кожної підгрупи генеруємо від 20 до 50 занять для цього курсу
+    #     for sg in relevant_subgroups:
+    #         for _ in range(random.randint(20, 50)):
+    #             random_date = fake.date_between_dates(date_start=today, date_end=future_date_end)
+    #             random_time = time(
+    #                 hour=random.randint(8, 18),
+    #                 minute=random.choice([0, 15, 30, 45])
+    #             )
+    #             Lesson.objects.create(
+    #                 course=c,
+    #                 subgroup=sg,
+    #                 date=random_date,
+    #                 start_time=random_time,
+    #                 lesson_type=random.choice(LESSON_TYPES)
+    #             )
     print("Багато тестових даних успішно створено!")
 
 
